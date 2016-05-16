@@ -44,14 +44,14 @@
     SInt64 relativePosition;
     SInt64 fileLength;
     int discontinuous;
-	int requestSerialNumber;
+    int requestSerialNumber;
     int prefixBytesRead;
     NSData* prefixBytes;
     NSMutableData* iceHeaderData;
     BOOL iceHeaderSearchComplete;
     BOOL iceHeaderAvailable;
     BOOL httpHeaderNotAvailable;
-
+    
     NSURL* currentUrl;
     STKAsyncURLProvider asyncUrlProvider;
     NSDictionary* httpHeaders;
@@ -73,17 +73,28 @@
 {
     self = [self initWithURLProvider:^NSURL* { return urlIn; }];
     self->requestHeaders = httpRequestHeaders;
+    if (audioFileTypeHint == 0) {
+        audioFileTypeHint = [STKLocalFileDataSource audioFileTypeHintFromString:urlIn.absoluteString];
+    }
+    if (audioFileTypeHint == 0) {
+        for (NSString* value in self->requestHeaders.allValues) {
+            audioFileTypeHint = [STKLocalFileDataSource audioFileTypeHintFromString:value];
+            if (audioFileTypeHint != 0) {
+                break;
+            }
+        }
+    }
     return self;
 }
 
 -(instancetype) initWithURLProvider:(STKURLProvider)urlProviderIn
 {
-	urlProviderIn = [urlProviderIn copy];
+    urlProviderIn = [urlProviderIn copy];
     
     return [self initWithAsyncURLProvider:^(STKHTTPDataSource* dataSource, BOOL forSeek, STKURLBlock block)
-    {
-        block(urlProviderIn());
-    }];
+            {
+                block(urlProviderIn());
+            }];
 }
 
 -(instancetype) initWithAsyncURLProvider:(STKAsyncURLProvider)asyncUrlProviderIn
@@ -93,9 +104,7 @@
         seekStart = 0;
         relativePosition = 0;
         fileLength = -1;
-        
         self->asyncUrlProvider = [asyncUrlProviderIn copy];
-        
         audioFileTypeHint = [STKLocalFileDataSource audioFileTypeHintFromFileExtension:self->currentUrl.pathExtension];
     }
     
@@ -118,36 +127,36 @@
     static NSDictionary* fileTypesByMimeType;
     
     dispatch_once(&onceToken, ^
-    {
-        fileTypesByMimeType =
-        @{
-            @"audio/mp3": @(kAudioFileMP3Type),
-            @"audio/mpg": @(kAudioFileMP3Type),
-            @"audio/mpeg": @(kAudioFileMP3Type),
-            @"audio/wav": @(kAudioFileWAVEType),
-            @"audio/x-wav": @(kAudioFileWAVEType),
-            @"audio/vnd.wav": @(kAudioFileWAVEType),
-            @"audio/aifc": @(kAudioFileAIFCType),
-            @"audio/aiff": @(kAudioFileAIFFType),
-            @"audio/x-m4a": @(kAudioFileM4AType),
-            @"audio/x-mp4": @(kAudioFileMPEG4Type),
-            @"audio/aacp": @(kAudioFileAAC_ADTSType),
-            @"audio/m4a": @(kAudioFileM4AType),
-            @"audio/mp4": @(kAudioFileMPEG4Type),
-            @"video/mp4": @(kAudioFileMPEG4Type),
-            @"audio/caf": @(kAudioFileCAFType),
-            @"audio/x-caf": @(kAudioFileCAFType),
-            @"audio/aac": @(kAudioFileAAC_ADTSType),
-            @"audio/aacp": @(kAudioFileAAC_ADTSType),
-            @"audio/ac3": @(kAudioFileAC3Type),
-            @"audio/3gp": @(kAudioFile3GPType),
-            @"video/3gp": @(kAudioFile3GPType),
-            @"audio/3gpp": @(kAudioFile3GPType),
-            @"video/3gpp": @(kAudioFile3GPType),
-            @"audio/3gp2": @(kAudioFile3GP2Type),
-            @"video/3gp2": @(kAudioFile3GP2Type)
-        };
-    });
+                  {
+                      fileTypesByMimeType =
+                      @{
+                        @"audio/mp3": @(kAudioFileMP3Type),
+                        @"audio/mpg": @(kAudioFileMP3Type),
+                        @"audio/mpeg": @(kAudioFileMP3Type),
+                        @"audio/wav": @(kAudioFileWAVEType),
+                        @"audio/x-wav": @(kAudioFileWAVEType),
+                        @"audio/vnd.wav": @(kAudioFileWAVEType),
+                        @"audio/aifc": @(kAudioFileAIFCType),
+                        @"audio/aiff": @(kAudioFileAIFFType),
+                        @"audio/x-m4a": @(kAudioFileM4AType),
+                        @"audio/x-mp4": @(kAudioFileMPEG4Type),
+                        @"audio/aacp": @(kAudioFileAAC_ADTSType),
+                        @"audio/m4a": @(kAudioFileM4AType),
+                        @"audio/mp4": @(kAudioFileMPEG4Type),
+                        @"video/mp4": @(kAudioFileMPEG4Type),
+                        @"audio/caf": @(kAudioFileCAFType),
+                        @"audio/x-caf": @(kAudioFileCAFType),
+                        @"audio/aac": @(kAudioFileAAC_ADTSType),
+                        @"audio/aacp": @(kAudioFileAAC_ADTSType),
+                        @"audio/ac3": @(kAudioFileAC3Type),
+                        @"audio/3gp": @(kAudioFile3GPType),
+                        @"video/3gp": @(kAudioFile3GPType),
+                        @"audio/3gpp": @(kAudioFile3GPType),
+                        @"video/3gpp": @(kAudioFile3GPType),
+                        @"audio/3gp2": @(kAudioFile3GP2Type),
+                        @"video/3gp2": @(kAudioFile3GP2Type)
+                        };
+                  });
     
     NSNumber* number = [fileTypesByMimeType objectForKey:mimeType];
     
@@ -226,7 +235,7 @@
             {
                 self->httpStatusCode = (UInt32)CFHTTPMessageGetResponseStatusCode((CFHTTPMessageRef)response);
             }
-
+            
             CFRelease(response);
         }
     }
@@ -243,7 +252,7 @@
             UInt8 byte;
             UInt8 terminal1[] = { '\n', '\n' };
             UInt8 terminal2[] = { '\r', '\n', '\r', '\n' };
-
+            
             if (iceHeaderData == nil)
             {
                 iceHeaderData = [NSMutableData dataWithCapacity:1024];
@@ -305,7 +314,7 @@
                 return NO;
             }
         }
-
+        
         httpHeaders = [self parseIceHeader:self->iceHeaderData];
         
         self->iceHeaderData = nil;
@@ -371,8 +380,8 @@
         return;
     }
     
-	if (self.httpStatusCode == 0)
-	{
+    if (self.httpStatusCode == 0)
+    {
         if ([self parseHttpHeader])
         {
             if ([self hasBytesAvailable])
@@ -386,7 +395,7 @@
         {
             return;
         }
-	}
+    }
     else
     {
         [super dataAvailable];
@@ -410,7 +419,7 @@
     [self close];
     
     eventsRunLoop = savedEventsRunLoop;
-	
+    
     [self seekToOffset:self->supportsSeek ? self.position : 0];
 }
 
@@ -421,7 +430,7 @@
     [self close];
     
     eventsRunLoop = savedEventsRunLoop;
-	
+    
     NSAssert([NSRunLoop currentRunLoop] == eventsRunLoop, @"Seek called on wrong thread");
     
     stream = 0;
@@ -485,104 +494,104 @@
 
 -(void) openForSeek:(BOOL)forSeek
 {
-	int localRequestSerialNumber;
-	
-	requestSerialNumber++;
-	localRequestSerialNumber = requestSerialNumber;
-	
+    int localRequestSerialNumber;
+    
+    requestSerialNumber++;
+    localRequestSerialNumber = requestSerialNumber;
+    
     asyncUrlProvider(self, forSeek, ^(NSURL* url)
-    {
-		if (localRequestSerialNumber != self->requestSerialNumber)
-		{
-			return;
-		}
-	
-        self->currentUrl = url;
-
-        if (url == nil)
-        {
-            return;
-        }
-
-        CFHTTPMessageRef message = CFHTTPMessageCreateRequest(NULL, (CFStringRef)@"GET", (__bridge CFURLRef)self->currentUrl, kCFHTTPVersion1_1);
-
-        if (seekStart > 0 && supportsSeek)
-        {
-            CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Range"), (__bridge CFStringRef)[NSString stringWithFormat:@"bytes=%lld-", seekStart]);
-
-            discontinuous = YES;
-        }
-
-        for (NSString* key in self->requestHeaders)
-        {
-            NSString* value = [self->requestHeaders objectForKey:key];
-            
-            CFHTTPMessageSetHeaderFieldValue(message, (__bridge CFStringRef)key, (__bridge CFStringRef)value);
-        }
-        
-        CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Accept"), CFSTR("*/*"));
-        CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Ice-MetaData"), CFSTR("0"));
-
-        stream = CFReadStreamCreateForHTTPRequest(NULL, message);
-
-        if (stream == nil)
-        {
-            CFRelease(message);
-
-            [self errorOccured];
-
-            return;
-        }
- 
-        CFReadStreamSetProperty(stream, (__bridge CFStringRef)NSStreamNetworkServiceTypeBackground, (__bridge CFStringRef)NSStreamNetworkServiceTypeBackground);
-
-        if (!CFReadStreamSetProperty(stream, kCFStreamPropertyHTTPShouldAutoredirect, kCFBooleanTrue))
-        {
-            CFRelease(message);
-
-            [self errorOccured];
-
-            return;
-        }
-
-        // Proxy support
-        CFDictionaryRef proxySettings = CFNetworkCopySystemProxySettings();
-        CFReadStreamSetProperty(stream, kCFStreamPropertyHTTPProxy, proxySettings);
-        CFRelease(proxySettings);
-
-        // SSL support
-        if ([self->currentUrl.scheme caseInsensitiveCompare:@"https"] == NSOrderedSame)
-        {
-            NSDictionary* sslSettings = [NSDictionary dictionaryWithObjectsAndKeys:
-            (NSString*)kCFStreamSocketSecurityLevelNegotiatedSSL, kCFStreamSSLLevel,
-            [NSNumber numberWithBool:NO], kCFStreamSSLValidatesCertificateChain,
-            [NSNull null], kCFStreamSSLPeerName,
-            nil];
-
-            CFReadStreamSetProperty(stream, kCFStreamPropertySSLSettings, (__bridge CFTypeRef)sslSettings);
-        }
-
-        [self reregisterForEvents];
-        
-		self->httpStatusCode = 0;
-		
-        // Open
-        if (!CFReadStreamOpen(stream))
-        {
-            CFRelease(stream);
-            CFRelease(message);
-            
-            stream = 0;
-
-            [self errorOccured];
-
-            return;
-        }
-        
-        self->isInErrorState = NO;
-        
-        CFRelease(message);
-    });
+                     {
+                         if (localRequestSerialNumber != self->requestSerialNumber)
+                         {
+                             return;
+                         }
+                         
+                         self->currentUrl = url;
+                         
+                         if (url == nil)
+                         {
+                             return;
+                         }
+                         
+                         CFHTTPMessageRef message = CFHTTPMessageCreateRequest(NULL, (CFStringRef)@"GET", (__bridge CFURLRef)self->currentUrl, kCFHTTPVersion1_1);
+                         
+                         if (seekStart > 0 && supportsSeek)
+                         {
+                             CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Range"), (__bridge CFStringRef)[NSString stringWithFormat:@"bytes=%lld-", seekStart]);
+                             
+                             discontinuous = YES;
+                         }
+                         
+                         for (NSString* key in self->requestHeaders)
+                         {
+                             NSString* value = [self->requestHeaders objectForKey:key];
+                             
+                             CFHTTPMessageSetHeaderFieldValue(message, (__bridge CFStringRef)key, (__bridge CFStringRef)value);
+                         }
+                         
+                         CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Accept"), CFSTR("*/*"));
+                         CFHTTPMessageSetHeaderFieldValue(message, CFSTR("Ice-MetaData"), CFSTR("0"));
+                         
+                         stream = CFReadStreamCreateForHTTPRequest(NULL, message);
+                         
+                         if (stream == nil)
+                         {
+                             CFRelease(message);
+                             
+                             [self errorOccured];
+                             
+                             return;
+                         }
+                         
+                         CFReadStreamSetProperty(stream, (__bridge CFStringRef)NSStreamNetworkServiceTypeBackground, (__bridge CFStringRef)NSStreamNetworkServiceTypeBackground);
+                         
+                         if (!CFReadStreamSetProperty(stream, kCFStreamPropertyHTTPShouldAutoredirect, kCFBooleanTrue))
+                         {
+                             CFRelease(message);
+                             
+                             [self errorOccured];
+                             
+                             return;
+                         }
+                         
+                         // Proxy support
+                         CFDictionaryRef proxySettings = CFNetworkCopySystemProxySettings();
+                         CFReadStreamSetProperty(stream, kCFStreamPropertyHTTPProxy, proxySettings);
+                         CFRelease(proxySettings);
+                         
+                         // SSL support
+                         if ([self->currentUrl.scheme caseInsensitiveCompare:@"https"] == NSOrderedSame)
+                         {
+                             NSDictionary* sslSettings = [NSDictionary dictionaryWithObjectsAndKeys:
+                                                          (NSString*)kCFStreamSocketSecurityLevelNegotiatedSSL, kCFStreamSSLLevel,
+                                                          [NSNumber numberWithBool:NO], kCFStreamSSLValidatesCertificateChain,
+                                                          [NSNull null], kCFStreamSSLPeerName,
+                                                          nil];
+                             
+                             CFReadStreamSetProperty(stream, kCFStreamPropertySSLSettings, (__bridge CFTypeRef)sslSettings);
+                         }
+                         
+                         [self reregisterForEvents];
+                         
+                         self->httpStatusCode = 0;
+                         
+                         // Open
+                         if (!CFReadStreamOpen(stream))
+                         {
+                             CFRelease(stream);
+                             CFRelease(message);
+                             
+                             stream = 0;
+                             
+                             [self errorOccured];
+                             
+                             return;
+                         }
+                         
+                         self->isInErrorState = NO;
+                         
+                         CFRelease(message);
+                     });
 }
 
 -(UInt32) httpStatusCode
