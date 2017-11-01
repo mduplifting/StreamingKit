@@ -57,6 +57,7 @@
     NSDictionary* httpHeaders;
     AudioFileTypeID audioFileTypeHint;
     NSDictionary* requestHeaders;
+    NSString* requestMethod;
 }
 -(void) open;
 
@@ -67,6 +68,12 @@
 -(instancetype) initWithURL:(NSURL*)urlIn
 {
     return [self initWithURLProvider:^NSURL* { return urlIn; }];
+}
+
+-(instancetype) initWithURL:(NSURL*)url andMethod:(NSString*)httpMehod {
+    self = [self initWithURL:url];
+    self->requestMethod = [httpMehod uppercaseString];
+    return self;
 }
 
 -(instancetype) initWithURL:(NSURL *)urlIn httpRequestHeaders:(NSDictionary *)httpRequestHeaders
@@ -84,6 +91,12 @@
             }
         }
     }
+    return self;
+}
+
+-(instancetype) initWithURL:(NSURL*)url httpRequestHeaders:(NSDictionary*)httpRequestHeaders andMethod:(NSString*)httpMehod {
+    self = [self initWithURL:url httpRequestHeaders:httpRequestHeaders];
+    self->requestMethod = [httpMehod uppercaseString];
     return self;
 }
 
@@ -106,6 +119,7 @@
         fileLength = -1;
         self->asyncUrlProvider = [asyncUrlProviderIn copy];
         audioFileTypeHint = [STKLocalFileDataSource audioFileTypeHintFromFileExtension:self->currentUrl.pathExtension];
+        self->requestMethod = @"GET";
     }
     
     return self;
@@ -513,7 +527,7 @@
                              return;
                          }
                          
-                         CFHTTPMessageRef message = CFHTTPMessageCreateRequest(NULL, (CFStringRef)@"GET", (__bridge CFURLRef)self->currentUrl, kCFHTTPVersion1_1);
+                         CFHTTPMessageRef message = CFHTTPMessageCreateRequest(NULL, (__bridge CFStringRef)self->requestMethod, (__bridge CFURLRef)self->currentUrl, kCFHTTPVersion1_1);
                          
                          if (seekStart > 0 && supportsSeek)
                          {
