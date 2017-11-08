@@ -60,18 +60,18 @@ typedef NS_OPTIONS(NSInteger, STKAudioPlayerState)
 
 typedef NS_ENUM(NSInteger, STKAudioPlayerStopReason)
 {
-    STKAudioPlayerStopReasonNone = 0,
-    STKAudioPlayerStopReasonEof,
-    STKAudioPlayerStopReasonUserAction,
-    STKAudioPlayerStopReasonPendingNext,
-    STKAudioPlayerStopReasonDisposed,
-    STKAudioPlayerStopReasonError = 0xffff
+	STKAudioPlayerStopReasonNone = 0,
+	STKAudioPlayerStopReasonEof,
+	STKAudioPlayerStopReasonUserAction,
+	STKAudioPlayerStopReasonPendingNext,
+	STKAudioPlayerStopReasonDisposed,
+	STKAudioPlayerStopReasonError = 0xffff
 };
 
 typedef NS_ENUM(NSInteger, STKAudioPlayerErrorCode)
 {
-    STKAudioPlayerErrorNone = 0,
-    STKAudioPlayerErrorDataSource,
+	STKAudioPlayerErrorNone = 0,
+	STKAudioPlayerErrorDataSource,
     STKAudioPlayerErrorStreamParseBytesFailed,
     STKAudioPlayerErrorAudioSystemError,
     STKAudioPlayerErrorCodecError,
@@ -92,13 +92,13 @@ typedef struct
     BOOL enableVolumeMixer;
     /// A pointer to a 0 terminated array of band frequencies (iOS 5.0 and later, OSX 10.9 and later)
     Float32 equalizerBandFrequencies[24];
-    /// The size of the internal I/O read buffer. This data in this buffer is transient and does not need to be larger.
+	/// The size of the internal I/O read buffer. This data in this buffer is transient and does not need to be larger.
     UInt32 readBufferSize;
     /// The size of the decompressed buffer (Default is 10 seconds which uses about 1.7MB of RAM)
     Float32 bufferSizeInSeconds;
     /// Number of seconds of decompressed audio is required before playback first starts for each item (Default is 0.5 seconds. Must be larger than bufferSizeInSeconds)
     Float32 secondsRequiredToStartPlaying;
-    /// Seconds after a seek is performed before data needs to come in (after which the state will change to playing/buffering)
+	/// Seconds after a seek is performed before data needs to come in (after which the state will change to playing/buffering)
     Float32 gracePeriodAfterSeekInSeconds;
     /// Number of seconds of decompressed audio required before playback resumes after a buffer underrun (Default is 5 seconds. Must be larger than bufferSizeinSeconds)
     Float32 secondsRequiredToStartPlayingAfterBufferUnderun;
@@ -167,7 +167,7 @@ typedef void(^STKFrameFilter)(UInt32 channelsPerFrame, UInt32 bytesPerFrame, UIn
 /// Gets the reason why the player is stopped (if any)
 @property (readonly) STKAudioPlayerStopReason stopReason;
 /// Gets and sets the delegate used for receiving events from the STKAudioPlayer
-@property (readwrite, weak) id<STKAudioPlayerDelegate> delegate;
+@property (readwrite, unsafe_unretained) id<STKAudioPlayerDelegate> delegate;
 
 /// Creates a datasource from a given URL.
 /// URLs with FILE schemes will return an STKLocalFileDataSource.
@@ -268,6 +268,16 @@ typedef void(^STKFrameFilter)(UInt32 channelsPerFrame, UInt32 bytesPerFrame, UIn
 
 /// Sets the gain value (from -96 low to +24 high) for an equalizer band (0 based index)
 -(void) setGain:(float)gain forEqualizerBand:(int)bandIndex;
+
+-(void) setMainVolumeGain:(float)gain;
+
+-(void) setThreeDEffect:(bool) flag;
+
+-(void) setLeftChanelVolume:(float) value;
+
+-(void) setRightChanelVolume:(float) value;
+
+-(void) resetThreeDEffect;
 
 @end
 

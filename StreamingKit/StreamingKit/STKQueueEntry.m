@@ -8,7 +8,7 @@
 
 #import "STKQueueEntry.h"
 #import "STKDataSource.h"
-
+#import <os/lock.h>
 #define STK_BIT_RATE_ESTIMATION_MIN_PACKETS_MIN (2)
 #define STK_BIT_RATE_ESTIMATION_MIN_PACKETS_PREFERRED (64)
 
@@ -18,7 +18,7 @@
 {
     if (self = [super init])
     {
-        self->spinLock = OS_SPINLOCK_INIT;
+        self->spinLock = OS_UNFAIR_LOCK_INIT;
         
         self.dataSource = dataSourceIn;
         self.queueItemId = queueItemIdIn;
@@ -31,11 +31,11 @@
 
 -(void) reset
 {
-    OSSpinLockLock(&self->spinLock);
+    os_unfair_lock_lock(&self->spinLock);
     self->framesQueued = 0;
     self->framesPlayed = 0;
     self->lastFrameQueued = -1;
-    OSSpinLockUnlock(&self->spinLock);
+    os_unfair_lock_unlock(&self->spinLock);
 }
 
 -(double) calculatedBitRate
@@ -109,9 +109,9 @@
 
 -(Float64) progressInFrames
 {
-    OSSpinLockLock(&self->spinLock);
+    os_unfair_lock_lock(&self->spinLock);
     Float64 retval = (self->seekTime + self->audioStreamBasicDescription.mSampleRate) + self->framesPlayed;
-    OSSpinLockUnlock(&self->spinLock);
+    os_unfair_lock_unlock(&self->spinLock);
     
     return retval;
 }

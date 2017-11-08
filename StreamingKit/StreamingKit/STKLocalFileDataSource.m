@@ -30,15 +30,19 @@
  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- **********************************************************************************/
+**********************************************************************************/
 
 #import "STKLocalFileDataSource.h"
+#import <AVFoundation/AVFoundation.h>
 
 @interface STKLocalFileDataSource()
 {
     SInt64 position;
     SInt64 length;
     AudioFileTypeID audioFileTypeHint;
+    NSURL *_mediaLibraryURL;
+    AVAssetExportSession *_exportSession;
+    NSString *_cachedPath;
 }
 @property (readwrite, copy) NSString* filePath;
 -(void) open;
@@ -65,21 +69,21 @@
     static NSDictionary* fileTypesByFileExtensions;
     
     dispatch_once(&onceToken, ^
-                  {
-                      fileTypesByFileExtensions =
-                      @{
-                        @"mp3": @(kAudioFileMP3Type),
-                        @"wav": @(kAudioFileWAVEType),
-                        @"aifc": @(kAudioFileAIFCType),
-                        @"aiff": @(kAudioFileAIFFType),
-                        @"m4a": @(kAudioFileM4AType),
-                        @"mp4": @(kAudioFileMPEG4Type),
-                        @"caf": @(kAudioFileCAFType),
-                        @"aac": @(kAudioFileAAC_ADTSType),
-                        @"ac3": @(kAudioFileAC3Type),
-                        @"3gp": @(kAudioFile3GPType)
-                        };
-                  });
+    {
+        fileTypesByFileExtensions =
+        @{
+            @"mp3": @(kAudioFileMP3Type),
+            @"wav": @(kAudioFileWAVEType),
+            @"aifc": @(kAudioFileAIFCType),
+            @"aiff": @(kAudioFileAIFFType),
+            @"m4a": @(kAudioFileM4AType),
+            @"mp4": @(kAudioFileMPEG4Type),
+            @"caf": @(kAudioFileCAFType),
+            @"aac": @(kAudioFileAAC_ADTSType),
+            @"ac3": @(kAudioFileAC3Type),
+            @"3gp": @(kAudioFile3GPType)
+        };
+    });
     
     NSNumber* number = [fileTypesByFileExtensions objectForKey:fileExtension];
     
@@ -91,34 +95,6 @@
     return (AudioFileTypeID)number.intValue;
 }
 
-+(AudioFileTypeID) audioFileTypeHintFromString:(NSString*)fileExtension
-{
-    if (fileExtension != nil) {
-        if ([fileExtension rangeOfString:@".mp3"].location != NSNotFound) {
-            return kAudioFileMP3Type;
-        } else if ([fileExtension rangeOfString:@".wav"].location != NSNotFound) {
-            return kAudioFileWAVEType;
-        } else if ([fileExtension rangeOfString:@".aifc"].location != NSNotFound) {
-            return kAudioFileAIFCType;
-        } else if ([fileExtension rangeOfString:@".aiff"].location != NSNotFound) {
-            return kAudioFileAIFFType;
-        } else if ([fileExtension rangeOfString:@".m4a"].location != NSNotFound) {
-            return kAudioFileM4AType;
-        } else if ([fileExtension rangeOfString:@".mp4"].location != NSNotFound) {
-            return kAudioFileMPEG4Type;
-        } else if ([fileExtension rangeOfString:@".caf"].location != NSNotFound) {
-            return kAudioFileCAFType;
-        } else if ([fileExtension rangeOfString:@".aac"].location != NSNotFound) {
-            return kAudioFileAAC_ADTSType;
-        } else if ([fileExtension rangeOfString:@".ac3"].location != NSNotFound) {
-            return kAudioFileAC3Type;
-        } else if ([fileExtension rangeOfString:@".3gp"].location != NSNotFound) {
-            return kAudioFile3GPType;
-        }
-    }
-    return 0;
-}
-
 -(AudioFileTypeID) audioFileTypeHint
 {
     return audioFileTypeHint;
@@ -126,7 +102,6 @@
 
 -(void) dealloc
 {
-    NSLog(@"STKLocalFileDataSource dealloc");
     [self close];
 }
 
@@ -135,7 +110,7 @@
     if (stream)
     {
         [self unregisterForEvents];
-        
+
         CFReadStreamClose(stream);
         
         stream = 0;
@@ -161,7 +136,7 @@
     NSError* fileError;
     NSFileManager* manager = [[NSFileManager alloc] init];
     NSDictionary* attributes = [manager attributesOfItemAtPath:filePath error:&fileError];
-    
+
     if (fileError)
     {
         CFReadStreamClose(stream);
@@ -169,7 +144,7 @@
         stream = 0;
         return;
     }
-    
+
     NSNumber* number = [attributes objectForKey:@"NSFileSize"];
     
     if (number)
@@ -178,7 +153,7 @@
     }
     
     [self reregisterForEvents];
-    
+
     CFReadStreamOpen(stream);
 }
 
@@ -195,7 +170,7 @@
 -(int) readIntoBuffer:(UInt8*)buffer withSize:(int)size
 {
     int retval = (int)CFReadStreamRead(stream, buffer, size);
-    
+
     if (retval > 0)
     {
         position += retval;
@@ -216,7 +191,7 @@
     
     if (stream != 0)
     {
-        status = CFReadStreamGetStatus(stream);
+		status = CFReadStreamGetStatus(stream);
     }
     
     BOOL reopened = NO;
@@ -225,16 +200,16 @@
     {
         reopened = YES;
         
-        [self close];
+        [self close];        
         [self open];
     }
     
     if (stream == 0)
     {
         CFRunLoopPerformBlock(eventsRunLoop.getCFRunLoop, NSRunLoopCommonModes, ^
-                              {
-                                  [self errorOccured];
-                              });
+        {
+            [self errorOccured];
+        });
         
         CFRunLoopWakeUp(eventsRunLoop.getCFRunLoop);
         
@@ -253,12 +228,12 @@
     if (!reopened)
     {
         CFRunLoopPerformBlock(eventsRunLoop.getCFRunLoop, NSRunLoopCommonModes, ^
-                              {
-                                  if ([self hasBytesAvailable])
-                                  {
-                                      [self dataAvailable];
-                                  }
-                              });
+        {
+            if ([self hasBytesAvailable])
+            {
+                [self dataAvailable];
+            }
+        });
         
         CFRunLoopWakeUp(eventsRunLoop.getCFRunLoop);
     }
